@@ -22,5 +22,8 @@
     <string name="button">Button</string>
     <string name="time_sunset">sunset time</string>
     <string name="time_sunrize">sunrise time</string>
+    <string name="failed_to_fetch_sun_data">Failed to fetch sun data</string>
+    <string name="current_location">Current Location</string>
+    <string name="lat_lon">Lat: %1$s, Lon: %2$s</string>
 
 </resources>

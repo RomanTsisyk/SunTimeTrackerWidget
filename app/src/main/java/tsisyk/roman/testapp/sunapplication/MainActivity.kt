@@ -14,126 +14,88 @@ import androidx.core.app.ActivityCompat
 import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
-import android.widget.TextView
+import android.widget.Button
 import android.widget.Toast
+import androidx.multidex.BuildConfig.APPLICATION_ID
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.places.ui.PlacePicker
 import kotlinx.android.synthetic.main.content_main.*
-
-import retrofit2.Call
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.Callback
-import tsisyk.roman.testapp.sunapplication.BuildConfig.APPLICATION_ID
-import tsisyk.roman.testapp.sunapplication.retrofit.SunResponse
-import tsisyk.roman.testapp.sunapplication.retrofit.SunService
+import tsisyk.roman.testapp.sunapplication.model.SunResponse
+import tsisyk.roman.testapp.sunapplication.services.LocationService
+import tsisyk.roman.testapp.sunapplication.services.SunApiService
+import tsisyk.roman.testapp.sunapplication.utils.UiUtils
 import java.util.*
 
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
-    private val TAG = "MainActivity"
-    private val PERMISSIONS_REQUEST_CODE = 34
-    private var PLACE_PICKER_REQUEST = 1
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var latitudeText: TextView
-    private lateinit var longitudeText: TextView
+    private var latitude = ""
+    private var longitude = ""
 
 
-    var baseUrl = "https://api.sunrise-sunset.org/"
-    var const = "date=today"
-    var lat = ""
-    var lon = ""
+    private val sunApiService: SunApiService by lazy {
+        SunApiService(this::updateSunDataUI)
+    }
+
+    private val locationService: LocationService by lazy {
+        LocationService(this)
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        initGetDataButton()
+        initLocationClient()
+    }
 
-        bntGetData.setOnClickListener {
-            if (checkBoxLocal.isChecked) {
-                getLastLocation()
-            } else (findNewLocation())
-            getSunAPIData()
-        }
-
+    private fun initLocationClient() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
-    private fun findNewLocation() {
-        val builder = PlacePicker.IntentBuilder()
-        startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST)
+    private fun initGetDataButton() {
+        findViewById<Button>(R.id.bntGetData).setOnClickListener {
+            if (checkBoxLocal.isChecked)
+                locationService.getLastLocation { latitude, longitude ->
+                    updateLocationUI(latitude, longitude, "Current Location")
+                }
+            else locationService.findNewLocation()
+
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == PLACE_PICKER_REQUEST && resultCode == Activity.RESULT_OK) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == LocationService.PLACE_PICKER_REQUEST && resultCode == Activity.RESULT_OK) {
             val place = PlacePicker.getPlace(this, data)
-            lat = place.latLng.latitude.toString()
-            lon = place.latLng.longitude.toString()
-            textPlaceName.text = place.name.toString()
-            textPlaseAdress.text = place.address.toString()
-            getSunAPIData()
-
+            val latitude = place.latLng.latitude.toString()
+            val longitude = place.latLng.longitude.toString()
+            updateLocationUI(latitude, longitude, place.name.toString(), place.address.toString())
         }
     }
 
-
-    private fun getSunAPIData() {
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-        val service = retrofit.create(SunService::class.java)
-        val call = service.getSunData(lat, lon, const)
-        call.enqueue(object : Callback<SunResponse> {
-            override fun onResponse(call: Call<SunResponse>, response: Response<SunResponse>) {
-                if (response.code() == 200) {
-                    val sunResponse = response.body()!!
-
-                    textSunrise.text = sunResponse.results.sunrise
-                    textSunset.text = sunResponse.results.sunset
-                }
-            }
-
-            override fun onFailure(call: retrofit2.Call<SunResponse>, t: Throwable) {
-
-            }
-        })
-    }
 
     override fun onStart() {
         super.onStart()
-
-        if (!checkPermissions()) {
-            requestPermissions()
-        } else {
-            getLastLocation()
-        }
+        if (!checkPermissions()) requestPermissions() else getLastLocation()
     }
 
-    @SuppressLint("MissingPermission", "SetTextI18n")
+    @SuppressLint("MissingPermission")
     private fun getLastLocation() {
         fusedLocationClient.lastLocation
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful && task.result != null) {
-/*
-                    latitudeText.text = resources.getString(R.string.latitude_label, task.result!!.latitude)
-                    longitudeText.text = resources.getString(R.string.longitude_label, task.result!!.longitude)*/
-
-                    lat = task.result!!.latitude.toString()
-                    lon = task.result!!.longitude.toString()
-
-                    textPlaceName.text = "Current Location"
-                    textPlaseAdress.text = "lat= " + task.result!!.latitude.toString() + ", lon=" + task.result!!.longitude.toString()
-
+                    latitude = task.result!!.latitude.toString()
+                    longitude = task.result!!.longitude.toString()
+                    textPlaceName.text = getString(R.string.current_location)
+                    textPlaseAdress.text = getString(R.string.lat_lon, latitude, longitude)
+                    sunApiService
                 } else {
-
-                    Toast.makeText(this, R.string.no_location_detected, Toast.LENGTH_SHORT)
+                    Toast.makeText(this, R.string.no_location_detected, Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -202,5 +164,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateSunDataUI(sunData: SunResponse?) {
+        sunData?.let {
+            textSunrise.text = it.results.sunrise
+            textSunset.text = it.results.sunset
+        } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
+    }
 
+    private fun updateLocationUI(latitude: String, longitude: String, placeName: String, placeAddress: String? = null) {
+        this.latitude = latitude
+        this.longitude = longitude
+        textPlaceName.text = placeName
+        textPlaseAdress.text = placeAddress ?: getString(R.string.lat_lon, latitude, longitude)
+        sunApiService // Update your UI or call necessary service
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
+        private const val PERMISSIONS_REQUEST_CODE = 34
+    }
 }

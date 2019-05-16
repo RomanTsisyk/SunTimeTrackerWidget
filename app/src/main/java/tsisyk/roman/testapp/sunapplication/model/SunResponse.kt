@@ -1,4 +1,4 @@
-package tsisyk.roman.testapp.sunapplication.retrofit
+package tsisyk.roman.testapp.sunapplication.model
 
 
 data class SunResponse(val results: ResultsResponse, val status: String)

@@ -16,6 +16,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.multidex.BuildConfig.APPLICATION_ID
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -25,32 +26,41 @@ import tsisyk.roman.testapp.sunapplication.model.SunResponse
 import tsisyk.roman.testapp.sunapplication.services.LocationService
 import tsisyk.roman.testapp.sunapplication.services.SunApiService
 import tsisyk.roman.testapp.sunapplication.utils.UiUtils
-import java.util.*
+import tsisyk.roman.testapp.sunapplication.viewmodel.MainViewModel
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel
 
 
-@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
-
+    private lateinit var mainViewModel: MainViewModel
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var latitude = ""
     private var longitude = ""
+    private val sunApiService: SunApiService by lazy { SunApiService(this::updateSunDataUI) }
+    private val locationService: LocationService by lazy { LocationService(this) }
 
-
-    private val sunApiService: SunApiService by lazy {
-        SunApiService(this::updateSunDataUI)
+    override fun onStart() {
+        super.onStart()
+        checkAndRequestPermissions()
     }
-
-    private val locationService: LocationService by lazy {
-        LocationService(this)
-    }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        initViewModel()
+        observeSunData()
         initGetDataButton()
         initLocationClient()
+    }
+
+    private fun initViewModel() {
+        mainViewModel = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(MainViewModel::class.java)) return MainViewModel(sunApiService) as T
+                throw IllegalArgumentException("Unknown ViewModel class")
+            }
+        }).get(MainViewModel::class.java)
     }
 
     private fun initLocationClient() {
@@ -61,10 +71,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.bntGetData).setOnClickListener {
             if (checkBoxLocal.isChecked)
                 locationService.getLastLocation { latitude, longitude ->
+                    mainViewModel.getSunData(latitude, longitude)
                     updateLocationUI(latitude, longitude, "Current Location")
                 }
             else locationService.findNewLocation()
-
         }
     }
 
@@ -78,11 +88,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    override fun onStart() {
-        super.onStart()
-        if (!checkPermissions()) requestPermissions() else getLastLocation()
-    }
 
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
@@ -171,12 +176,34 @@ class MainActivity : AppCompatActivity() {
         } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
     }
 
-    private fun updateLocationUI(latitude: String, longitude: String, placeName: String, placeAddress: String? = null) {
+    private fun updateLocationUI(
+        latitude: String,
+        longitude: String,
+        placeName: String,
+        placeAddress: String? = null
+    ) {
         this.latitude = latitude
         this.longitude = longitude
         textPlaceName.text = placeName
         textPlaseAdress.text = placeAddress ?: getString(R.string.lat_lon, latitude, longitude)
         sunApiService // Update your UI or call necessary service
+        mainViewModel.getSunData(latitude, longitude)
+    }
+
+    private fun observeSunData() {
+        mainViewModel.sunData.observe(this, Observer { sunData ->
+            sunData?.let {
+                updateSunDataUI(it)
+            } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
+        })
+    }
+
+    private fun checkAndRequestPermissions() {
+        if (checkPermissions()) {
+            getLastLocation()
+        } else {
+            requestPermissions()
+        }
     }
 
     companion object {

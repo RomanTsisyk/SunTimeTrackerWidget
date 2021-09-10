@@ -21,14 +21,19 @@ class LocationService(private val activity: Activity) {
     fun getLastLocation(onLocationReceived: (String, String) -> Unit) {
         fusedLocationClient.lastLocation
             .addOnCompleteListener(activity) { task ->
-                if (task.isSuccessful && task.result != null) {
-                    val location = task.result
-                    onLocationReceived(location!!.latitude.toString(), location.longitude.toString())
-                } else {
-                    UiUtils.showShortToast(
-                        activity,
-                        activity.getString(R.string.no_location_detected)
-                    )
+                activity.runOnUiThread {
+                    if (task.isSuccessful && task.result != null) {
+                        val location = task.result
+                        onLocationReceived(
+                            location!!.latitude.toString(),
+                            location.longitude.toString()
+                        )
+                    } else {
+                        UiUtils.showShortToast(
+                            activity,
+                            activity.getString(R.string.no_location_detected)
+                        )
+                    }
                 }
             }
     }

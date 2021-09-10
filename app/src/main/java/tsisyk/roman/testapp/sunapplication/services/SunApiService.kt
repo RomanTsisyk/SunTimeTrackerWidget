@@ -16,19 +16,19 @@ class SunApiService(private val updateUI: (SunResponse?) -> Unit) {
 
     private val service = retrofit.create(SunService::class.java)
 
-    fun getSunData(latitude: String, longitude: String) {
+    fun getSunData(latitude: String, longitude: String, callback: (SunResponse?) -> Unit) {
         val call = service.getSunData(latitude, longitude, "date=today")
         call.enqueue(object : Callback<SunResponse> {
             override fun onResponse(call: Call<SunResponse>, response: Response<SunResponse>) {
                 if (response.isSuccessful) {
-                    updateUI(response.body())
+                    callback(response.body())
                 } else {
-                    updateUI(null)
+                    callback(null)
                 }
             }
 
             override fun onFailure(call: Call<SunResponse>, t: Throwable) {
-                updateUI(null)
+                callback(null)
             }
         })
     }

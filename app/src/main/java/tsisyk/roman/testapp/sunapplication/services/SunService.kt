@@ -13,7 +13,6 @@ interface SunService {
         @Query("lat") lat: String,
         @Query("lng") lng: String,
         @Query("const") const: String
-    )
-            : Call<SunResponse>
+    ): Call<SunResponse>
 
 }

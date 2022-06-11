@@ -12,8 +12,12 @@ class MainViewModel(private val sunApiService: SunApiService) : ViewModel() {
     val sunData: LiveData<SunResponse?> = _sunData
 
     fun getSunData(latitude: String, longitude: String) {
-        sunApiService.getSunData(latitude, longitude) { sunResponse ->
-            _sunData.postValue(sunResponse)
+        sunApiService.getSunData(latitude, longitude) { sunResponse, throwable ->
+            if (throwable != null) {
+                // ToDo Add Firebase analytics event
+            } else {
+                _sunData.postValue(sunResponse)
+            }
         }
     }
 }

@@ -7,28 +7,34 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import tsisyk.roman.testapp.sunapplication.model.SunResponse
 
-class SunApiService(private val updateUI: (SunResponse?) -> Unit) {
+class SunApiService(private val updateUI: (SunResponse?, Throwable?) -> Unit) {
 
-    private val retrofit = Retrofit.Builder()
-        .baseUrl("https://api.sunrise-sunset.org/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
+    companion object {
+        private val retrofit: Retrofit by lazy {
+            Retrofit.Builder()
+                .baseUrl("https://api.sunrise-sunset.org/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+        }
 
-    private val service = retrofit.create(SunService::class.java)
+        private val service: SunService by lazy {
+            retrofit.create(SunService::class.java)
+        }
+    }
 
-    fun getSunData(latitude: String, longitude: String, callback: (SunResponse?) -> Unit) {
+    fun getSunData(latitude: String, longitude: String, callback: (SunResponse?, Throwable?) -> Unit) {
         val call = service.getSunData(latitude, longitude, "date=today")
         call.enqueue(object : Callback<SunResponse> {
             override fun onResponse(call: Call<SunResponse>, response: Response<SunResponse>) {
                 if (response.isSuccessful) {
-                    callback(response.body())
+                    callback(response.body(), null)
                 } else {
-                    callback(null)
+                    callback(null, RuntimeException("Response not successful"))
                 }
             }
 
             override fun onFailure(call: Call<SunResponse>, t: Throwable) {
-                callback(null)
+                callback(null, t)
             }
         })
     }

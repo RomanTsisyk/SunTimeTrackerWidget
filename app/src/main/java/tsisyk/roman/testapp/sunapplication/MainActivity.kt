@@ -1,8 +1,6 @@
 package tsisyk.roman.testapp.sunapplication
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.Uri
@@ -14,13 +12,7 @@ import androidx.core.app.ActivityCompat
 import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
-import androidx.multidex.BuildConfig.APPLICATION_ID
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.places.ui.PlacePicker
 import kotlinx.android.synthetic.main.content_main.*
 import tsisyk.roman.testapp.sunapplication.model.SunResponse
 import tsisyk.roman.testapp.sunapplication.services.LocationService
@@ -29,81 +21,49 @@ import tsisyk.roman.testapp.sunapplication.utils.UiUtils
 import tsisyk.roman.testapp.sunapplication.viewmodel.MainViewModel
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
+import tsisyk.roman.testapp.sunapplication.BuildConfig.APPLICATION_ID
 
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var mainViewModel: MainViewModel
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationService: LocationService
+    private lateinit var sunApiService: SunApiService
+
     private var latitude = ""
     private var longitude = ""
-    private val sunApiService: SunApiService by lazy { SunApiService(this::updateSunDataUI) }
-    private val locationService: LocationService by lazy { LocationService(this) }
-
-    override fun onStart() {
-        super.onStart()
-        checkAndRequestPermissions()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        initServices()
         initViewModel()
         observeSunData()
-        initGetDataButton()
-        initLocationClient()
+        checkAndRequestPermissions()
+    }
+
+    private fun initServices() {
+        locationService = LocationService(this)
+        sunApiService = SunApiService { sunData, throwable ->
+            if (throwable != null) {
+                Log.e("MainActivity", "Error fetching sun data", throwable)
+            } else {
+                updateSunDataUI(sunData)
+            }
+        }
     }
 
     private fun initViewModel() {
         mainViewModel = ViewModelProvider(this, object : ViewModelProvider.Factory {
-            override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-                if (modelClass.isAssignableFrom(MainViewModel::class.java)) return MainViewModel(sunApiService) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(MainViewModel::class.java)) return MainViewModel(
+                    sunApiService
+                ) as T
                 throw IllegalArgumentException("Unknown ViewModel class")
             }
         }).get(MainViewModel::class.java)
     }
 
-    private fun initLocationClient() {
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-    }
-
-    private fun initGetDataButton() {
-        findViewById<Button>(R.id.bntGetData).setOnClickListener {
-            if (checkBoxLocal.isChecked)
-                locationService.getLastLocation { latitude, longitude ->
-                    mainViewModel.getSunData(latitude, longitude)
-                    updateLocationUI(latitude, longitude, "Current Location")
-                }
-            else locationService.findNewLocation()
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == LocationService.PLACE_PICKER_REQUEST && resultCode == Activity.RESULT_OK) {
-            val place = PlacePicker.getPlace(this, data)
-            val latitude = place.latLng.latitude.toString()
-            val longitude = place.latLng.longitude.toString()
-            updateLocationUI(latitude, longitude, place.name.toString(), place.address.toString())
-        }
-    }
-
-
-    @SuppressLint("MissingPermission")
-    private fun getLastLocation() {
-        fusedLocationClient.lastLocation
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful && task.result != null) {
-                    latitude = task.result!!.latitude.toString()
-                    longitude = task.result!!.longitude.toString()
-                    textPlaceName.text = getString(R.string.current_location)
-                    textPlaseAdress.text = getString(R.string.lat_lon, latitude, longitude)
-                    sunApiService
-                } else {
-                    Toast.makeText(this, R.string.no_location_detected, Toast.LENGTH_SHORT).show()
-                }
-            }
-    }
 
     private fun showSnackbar(
         snackStrId: Int,
@@ -149,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<String>,
         grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         Log.i(TAG, "onRequestPermissionResult")
         if (requestCode == PERMISSIONS_REQUEST_CODE) {
             when {
@@ -206,6 +167,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getLastLocation() {
+        locationService.getLastLocation { latitude, longitude ->
+            mainViewModel.getSunData(latitude, longitude)
+        }
+    }
     companion object {
         private const val TAG = "MainActivity"
         private const val PERMISSIONS_REQUEST_CODE = 34

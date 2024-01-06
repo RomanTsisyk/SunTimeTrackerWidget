@@ -1,4 +1,4 @@
-# SunApplication
+# SunTimeTrackerWidget aka SunApplication
 
 ## Updates 
 

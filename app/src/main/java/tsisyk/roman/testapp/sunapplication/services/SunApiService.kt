@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import tsisyk.roman.testapp.sunapplication.model.SunResponse
 
-class SunApiService(private val updateUI: (SunResponse?, Throwable?) -> Unit) {
+class SunApiService {
 
     companion object {
         private val retrofit: Retrofit by lazy {

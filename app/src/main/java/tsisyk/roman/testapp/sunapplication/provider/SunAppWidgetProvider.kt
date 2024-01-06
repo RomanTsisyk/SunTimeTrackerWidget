@@ -8,4 +8,3 @@ import tsisyk.roman.testapp.sunapplication.ui.widget.SunAppWidget
 class SunAppWidgetProvider : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = SunAppWidget()
 }
-

@@ -12,16 +12,16 @@ import androidx.core.app.ActivityCompat
 import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
 import tsisyk.roman.testapp.sunapplication.model.SunResponse
 import tsisyk.roman.testapp.sunapplication.services.LocationService
 import tsisyk.roman.testapp.sunapplication.services.SunApiService
 import tsisyk.roman.testapp.sunapplication.ui.app.utils.UiUtils
 import tsisyk.roman.testapp.sunapplication.ui.app.viewmodel.MainViewModel
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel
 import tsisyk.roman.testapp.sunapplication.BuildConfig.APPLICATION_ID
 import tsisyk.roman.testapp.sunapplication.R
+import tsisyk.roman.testapp.sunapplication.ui.app.viewmodel.MainViewModelFactory
 
 
 class MainActivity : AppCompatActivity() {
@@ -29,9 +29,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainViewModel: MainViewModel
     private lateinit var locationService: LocationService
     private lateinit var sunApiService: SunApiService
-
-    private var latitude = ""
-    private var longitude = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,24 +41,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initServices() {
         locationService = LocationService(this)
-        sunApiService = SunApiService { sunData, throwable ->
-            if (throwable != null) {
-                Log.e("MainActivity", "Error fetching sun data", throwable)
-            } else {
-                updateSunDataUI(sunData)
-            }
-        }
+        sunApiService = SunApiService()
     }
 
     private fun initViewModel() {
-        mainViewModel = ViewModelProvider(this, object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                if (modelClass.isAssignableFrom(MainViewModel::class.java)) return MainViewModel(
-                    sunApiService
-                ) as T
-                throw IllegalArgumentException("Unknown ViewModel class")
-            }
-        }).get(MainViewModel::class.java)
+        val factory = MainViewModelFactory(sunApiService)
+        mainViewModel = ViewModelProvider(this, factory).get(MainViewModel::class.java)
     }
 
 
@@ -93,11 +78,10 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, ACCESS_COARSE_LOCATION)) {
             Log.i(TAG, "Displaying permission rationale to provide additional context.")
-            showSnackbar(R.string.permission_rationale, android.R.string.ok, View.OnClickListener {
-                // Request permission
-                startLocationPermissionRequest()
-            })
-
+            showSnackbar(
+                R.string.permission_rationale,
+                android.R.string.ok
+            ) { startLocationPermissionRequest() }
         } else {
             Log.i(TAG, "Requesting permission")
             startLocationPermissionRequest()
@@ -117,15 +101,15 @@ class MainActivity : AppCompatActivity() {
                 (grantResults[0] == PERMISSION_GRANTED) -> getLastLocation()
                 else -> {
                     showSnackbar(
-                        R.string.permission_denied_explanation, R.string.settings,
-                        View.OnClickListener {
-                            val intent = Intent().apply {
-                                action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                                data = Uri.fromParts("package", APPLICATION_ID, null)
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            startActivity(intent)
-                        })
+                        R.string.permission_denied_explanation, R.string.settings
+                    ) {
+                        val intent = Intent().apply {
+                            action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                            data = Uri.fromParts("package", APPLICATION_ID, null)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                    }
                 }
             }
         }
@@ -133,39 +117,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSunDataUI(sunData: SunResponse?) {
         sunData?.let {
-//            textSunrise.text = it.results.sunrise
-//            textSunset.text = it.results.sunset
+            findViewById<TextView>(R.id.textSunrise).text = it.results.sunrise
+            findViewById<TextView>(R.id.textSunset).text = it.results.sunset
         } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
-    }
 
-    private fun updateLocationUI(
-        latitude: String,
-        longitude: String,
-        placeName: String,
-        placeAddress: String? = null
-    ) {
-        this.latitude = latitude
-        this.longitude = longitude
-//        textPlaceName.text = placeName
-//        textPlaseAdress.text = placeAddress ?: getString(R.string.lat_lon, latitude, longitude)
-        sunApiService // Update your UI or call necessary service
-        mainViewModel.getSunData(latitude, longitude)
     }
 
     private fun observeSunData() {
-        mainViewModel.sunData.observe(this, Observer { sunData ->
+        mainViewModel.sunData.observe(this) { sunData ->
             sunData?.let {
                 updateSunDataUI(it)
             } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
-        })
+        }
     }
 
     private fun checkAndRequestPermissions() {
-        if (checkPermissions()) {
-            getLastLocation()
-        } else {
-            requestPermissions()
-        }
+        if (checkPermissions()) getLastLocation() else requestPermissions()
     }
 
     private fun getLastLocation() {
@@ -173,8 +140,9 @@ class MainActivity : AppCompatActivity() {
             mainViewModel.getSunData(latitude, longitude)
         }
     }
+
     companion object {
         private const val TAG = "MainActivity"
-        private const val PERMISSIONS_REQUEST_CODE = 34
+        const val PERMISSIONS_REQUEST_CODE = 34
     }
 }

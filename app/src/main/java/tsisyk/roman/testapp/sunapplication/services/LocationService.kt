@@ -5,7 +5,7 @@ import android.app.Activity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import tsisyk.roman.testapp.sunapplication.R
-import tsisyk.roman.testapp.sunapplication.utils.UiUtils
+import tsisyk.roman.testapp.sunapplication.ui.app.utils.UiUtils
 
 class LocationService(private val activity: Activity) {
 

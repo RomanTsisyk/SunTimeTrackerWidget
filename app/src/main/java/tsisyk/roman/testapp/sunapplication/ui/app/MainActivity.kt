@@ -1,4 +1,4 @@
-package tsisyk.roman.testapp.sunapplication
+package tsisyk.roman.testapp.sunapplication.ui.app
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.content.Intent
@@ -13,15 +13,15 @@ import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.android.synthetic.main.content_main.*
 import tsisyk.roman.testapp.sunapplication.model.SunResponse
 import tsisyk.roman.testapp.sunapplication.services.LocationService
 import tsisyk.roman.testapp.sunapplication.services.SunApiService
-import tsisyk.roman.testapp.sunapplication.utils.UiUtils
-import tsisyk.roman.testapp.sunapplication.viewmodel.MainViewModel
+import tsisyk.roman.testapp.sunapplication.ui.app.utils.UiUtils
+import tsisyk.roman.testapp.sunapplication.ui.app.viewmodel.MainViewModel
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import tsisyk.roman.testapp.sunapplication.BuildConfig.APPLICATION_ID
+import tsisyk.roman.testapp.sunapplication.R
 
 
 class MainActivity : AppCompatActivity() {
@@ -116,7 +116,8 @@ class MainActivity : AppCompatActivity() {
                 grantResults.isEmpty() -> Log.i(TAG, "User interaction was cancelled.")
                 (grantResults[0] == PERMISSION_GRANTED) -> getLastLocation()
                 else -> {
-                    showSnackbar(R.string.permission_denied_explanation, R.string.settings,
+                    showSnackbar(
+                        R.string.permission_denied_explanation, R.string.settings,
                         View.OnClickListener {
                             val intent = Intent().apply {
                                 action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
@@ -132,8 +133,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSunDataUI(sunData: SunResponse?) {
         sunData?.let {
-            textSunrise.text = it.results.sunrise
-            textSunset.text = it.results.sunset
+//            textSunrise.text = it.results.sunrise
+//            textSunset.text = it.results.sunset
         } ?: UiUtils.showShortToast(this, "Failed to fetch sun data")
     }
 
@@ -145,8 +146,8 @@ class MainActivity : AppCompatActivity() {
     ) {
         this.latitude = latitude
         this.longitude = longitude
-        textPlaceName.text = placeName
-        textPlaseAdress.text = placeAddress ?: getString(R.string.lat_lon, latitude, longitude)
+//        textPlaceName.text = placeName
+//        textPlaseAdress.text = placeAddress ?: getString(R.string.lat_lon, latitude, longitude)
         sunApiService // Update your UI or call necessary service
         mainViewModel.getSunData(latitude, longitude)
     }

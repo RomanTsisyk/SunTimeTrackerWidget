@@ -1,4 +1,4 @@
-package tsisyk.roman.testapp.sunapplication.viewmodel
+package tsisyk.roman.testapp.sunapplication.ui.app.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

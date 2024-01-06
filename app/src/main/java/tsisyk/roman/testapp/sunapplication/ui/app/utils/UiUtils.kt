@@ -1,4 +1,4 @@
-package tsisyk.roman.testapp.sunapplication.utils
+package tsisyk.roman.testapp.sunapplication.ui.app.utils
 
 import android.content.Context
 import android.widget.Toast
